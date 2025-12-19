@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<script src="https://cdn.jsdelivr.net/npm/ejs@3.1.10/ejs.min.js" integrity="sha256-FMg8nWT7/jWowLdDOFNNxtO8AcZM0Hri4lVe7Wl4DtM=" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" crossorigin="anonymous">
+<title>SuperTux Nightly Downloads</title>
+</head>
+<body>
+<div class="container">
+<h2>SuperTux Nightly Downloads</h2>
+<div id="rendered-content"></div>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+<script>
+// From https://stackoverflow.com/a/14919494
+function humanFilesize(bytes, si=false, dp=1) {
+  const thresh = si ? 1000 : 1024;
+
+  if (Math.abs(bytes) < thresh) {
+    return bytes + ' B';
+  }
+
+  const units = si 
+    ? ['kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'] 
+    : ['KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
+  let u = -1;
+  const r = 10**dp;
+
+  do {
+    bytes /= thresh;
+    ++u;
+  } while (Math.round(Math.abs(bytes) * r) / r >= thresh && u < units.length - 1);
+
+
+  return bytes.toFixed(dp) + ' ' + units[u];
+}
+
+const template = `
+<ul class="nav nav-tabs" role="tablist">
+  <% Object.entries(platforms).forEach(function ([platform, name]) { %>
+    <li class="nav-item"><a class="nav-link" id="<%= platform %>-tab" data-bs-target="#<%= platform %>-files" aria-controls="<%= platform %>-files" role="tab" data-bs-toggle="tab"><%= name %></a></li>
+  <% }); %>
+</ul>
+
+<select id="selectBranch" class="form-select w-auto" style="float: right; margin: 1em 0;">
+  <% branches.forEach(function (branch) { %>
+    <option value="<%= branch %>"><%= branch %></option>
+  <% }); %>
+</select>
+<div class="tab-content">
+<% Object.entries(platforms).forEach(function ([platform, name]) { %>
+  <div role="tabpanel" class="tab-pane" id="<%= platform %>-files">
+  <h3><%= name %></h3>
+  <% if(platformFiles[platform]) { %>
+    <table class="table table-bordered">
+    <tr><th>Date</th><th>Branch</th><th>File</th><th>Size</th><th>SHA-256 Sum</th></tr>
+    <% platformFiles[platform].forEach(function (file) { %>
+      <tr class="download-file-row" data-branch="<%= file.branch %>">
+        <td class="col-md-2"><%= file.date.toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" }) %></td>
+        <td class="col-md-2"><%= file.branch %></td>
+        <td><a href="<%= file.url %>"><%= file.url.split('/').pop() %></a></td>
+        <td class="col-md-2"><%= humanFilesize(file.size) %></td>
+        <td class="col-md-2 text-uppercase" style="word-wrap: break-word; max-width: 20em; font-family: monospace;"><%= file.shasum %></td>
+      </tr>
+    <% }); %>
+    </table>
+  <% } else { %>
+    No downloads available for "<%= name %>"
+  <% } %>
+  </div>
+<% }); %>
+`
+
+const platforms = {
+  win32: 'Windows (32-bit)',
+  win64: 'Windows (64-bit)',
+  osx: 'OS X / macOS',
+  linux: 'Linux (AppImage)',
+  src: 'Source Code',
+}
+
+let OSName="src";
+const UA = navigator.userAgent;
+if (UA.indexOf("Win") != -1) {
+  if (UA.indexOf("64") != -1)
+    OSName="win64";
+  else
+    OSName="win32";
+}
+if (UA.indexOf("Mac") != -1) 
+  OSName="osx";
+if (UA.indexOf("Linux") != -1)
+  OSName="linux";
+
+function onBranchSelectChange(branch) {
+  let rows = document.getElementsByClassName("download-file-row");
+  [...rows].forEach(function(row) {
+    if (row.getAttribute("data-branch") == branch) {
+      row.classList.remove("d-none");
+    }
+    else {
+      row.classList.add("d-none");
+    }
+  });
+}
+
+async function init() {
+  const response = await fetch('/api/download');
+  const now = new Date();
+  const rawData = await response.json();
+  const data = rawData.map(r => ({
+    ...r,
+    date: new Date(r.date)
+  })).filter(r => {
+    const daysOld = Math.floor((now - r.date) / (1000*60*60*24));
+    return daysOld < 14
+  });
+  data.sort((a, b) => b.date - a.date);
+  const platformFiles = {};
+  const branches = ["master"];
+  data.forEach(r => {  
+    if (!platformFiles[r.platform]) {
+      platformFiles[r.platform] = [];
+    }
+  
+    if(!branches.includes(r.branch)) {
+      branches.push(r.branch);
+    }
+    
+    platformFiles[r.platform].push({
+      date: r.date,
+      branch: r.branch,
+      url: r.url,
+      size: r.size,
+      shasum: r.shasum
+    });
+  })
+  document.getElementById("rendered-content").innerHTML = ejs.render(template, { branches, platformFiles })
+
+  const tabEl = document.getElementById(OSName + '-tab');
+  new bootstrap.Tab(tabEl).show();
+
+  document.getElementById("selectBranch").addEventListener("change",
+    event => onBranchSelectChange(event.target.value));
+  onBranchSelectChange("master");
+}
+init()
+
+</script>
+</body>
