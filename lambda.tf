@@ -15,18 +15,16 @@ resource "aws_lambda_function" "function" {
   handler       = "index.handler"
   code_sha256   = data.archive_file.lambda_source.output_base64sha256
 
-  # TOOD arm64
+  runtime       = "nodejs22.x"
+  timeout       = 10
+  memory_size   = 512
+  architectures = ["arm64"]
 
-  runtime = "nodejs18.x"
-  timeout = 10
-
-# TODO pass things
-  # environment {
-  #   variables = {
-  #     ENVIRONMENT = "production"
-  #     LOG_LEVEL   = "info"
-  #   }
-  # }
+  environment {
+    variables = {
+      TABLE_NAME = aws_dynamodb_table.downloads.name
+    }
+  }
 }
 
 resource "aws_lambda_permission" "api_gw" {

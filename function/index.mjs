@@ -3,7 +3,7 @@ import { DynamoDBDocument } from '@aws-sdk/lib-dynamodb';
 
 const dynamo = DynamoDBDocument.from(new DynamoDB());
 
-const TableName = "supertux-downloads";
+const TableName = process.env.TABLE_NAME;
 
 export const handler = async (event) => {
 
