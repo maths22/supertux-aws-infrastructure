@@ -26,3 +26,26 @@ resource "aws_s3_object" "index" {
   source = "static/index.html"
   etag   = filemd5("static/index.html")
 }
+
+data "aws_iam_policy_document" "s3_policy" {
+  statement {
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.bucket.arn}/*"]
+
+    principals {
+			type        = "Service"
+			identifiers = ["cloudfront.amazonaws.com"]
+		}
+
+		condition {
+			test     = "StringLike"
+			variable = "AWS:SourceArn"
+			values   = [aws_cloudfront_distribution.distribution.arn]
+		}
+  }
+}
+
+resource "aws_s3_bucket_policy" "bucket_policy" {
+  bucket = aws_s3_bucket.bucket.id
+  policy = data.aws_iam_policy_document.s3_policy.json
+}

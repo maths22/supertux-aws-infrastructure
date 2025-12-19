@@ -68,3 +68,12 @@ resource "aws_api_gateway_stage" "prod" {
   rest_api_id   = aws_api_gateway_rest_api.api.id
   stage_name    = "prod"
 }
+
+resource "aws_api_gateway_usage_plan" "usage_plan" {
+  name = "supertux-downloads"
+
+  api_stages {
+    api_id = aws_api_gateway_rest_api.api.id
+    stage  = aws_api_gateway_stage.prod.stage_name
+  }
+}
