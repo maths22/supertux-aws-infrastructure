@@ -14,6 +14,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.0"
     }
+    archive = {
+      source = "hashicorp/archive"
+      version = "~> 2.7"
+    }
   }
 }
 
@@ -26,3 +30,6 @@ provider "aws" {
     }
   }
 }
+
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
