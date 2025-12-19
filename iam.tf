@@ -52,7 +52,7 @@ data "aws_iam_policy_document" "dynamodb_access" {
       "dynamodb:Scan"
     ]
 
-    resources = ["${aws_dynamodb_table.downloads.arn}/*"]
+    resources = [aws_dynamodb_table.downloads.arn]
   }
 }
 
