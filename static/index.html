@@ -80,26 +80,85 @@ const template = `
 <% }); %>
 `
 
-const platforms = {
-  win32: 'Windows (32-bit)',
-  win64: 'Windows (64-bit)',
-  osx: 'OS X / macOS',
-  linux: 'Linux (AppImage)',
-  src: 'Source Code',
+const DownloadPlatform = {
+    WINDOWS_X86: "WINDOWS_X86",
+    WINDOWS_AMD64: "WINDOWS_AMD64",
+    MACOS_AMD64: "MACOS_AMD64",
+    MACOS_AARCH64: "MACOS_AARCH64",
+    LINUX_AMD64: "LINUX_AMD64",
+    ALL_PLATFORMS: "ALL_PLATFORMS",
+    UNKNOWN: "UNKNOWN",
 }
 
-let OSName="src";
-const UA = navigator.userAgent;
-if (UA.indexOf("Win") != -1) {
-  if (UA.indexOf("64") != -1)
-    OSName="win64";
-  else
-    OSName="win32";
+async function guessPlatform() {
+    // Modern chrome
+    let data;
+    if(navigator.userAgentData) {
+        data = await navigator.userAgentData.getHighEntropyValues(["architecture", "bitness"])
+    } else {
+        data = {}
+        // None of these are foolproof, but they are decent heuristics
+        if(navigator.platform.includes("Win")) {
+            data.platform = "Windows"
+            data.architecture = "unknown"
+            if (navigator.userAgent.indexOf("WOW64") != -1 || 
+                navigator.userAgent.indexOf("Win64") != -1 ){
+              data.bitness = "64"
+            } else {
+              data.bitness = "32"
+            }
+        } else if(navigator.platform.includes("Linux")) {
+            data.platform = "Linux"
+            if(navigator.platform.includes("x86_64")) {
+                data.architecture = "x86"
+                data.bitness = "64"
+            } else {
+                data.architecture = "unknown"
+                data.bitness = "unknown"
+            }
+        } else if(navigator.platform.includes("Mac")) {
+            data.platform = "macOS"
+            const w = document.createElement("canvas").getContext("webgl");
+            const d = w.getExtension('WEBGL_debug_renderer_info');
+            const g = d && w.getParameter(d.UNMASKED_RENDERER_WEBGL) || "";
+            if (g.match(/Apple/) && !g.match(/Apple GPU/)) {
+                data.architecture = "arm"
+            } else if (!g.match(/Apple GPU/)) {
+                data.architecture = "x86"
+            } else {
+                data.architecture = "unknown"
+            }
+
+            data.bitness = "64"
+        }
+    }
+
+    if(data.platform == "macOS" && data.architecture == "arm") {
+        return DownloadPlatform.MACOS_AARCH64
+    } else if(data.platform == "macOS" && data.architecture == "x86") {
+        return DownloadPlatform.MACOS_AMD64
+    } else if(data.platform == "macOS") {
+        return DownloadPlatform.MACOS_AMD64 // Have to arbirtrarily pick one; at this point I think there is more x86 than arm
+    } else if(data.platform == "Windows" && data.bitness == "32") {
+        return DownloadPlatform.WINDOWS_X86
+    } else if(data.platform == "Windows" && data.bitness == "64") {
+        return DownloadPlatform.WINDOWS_AMD64
+    } else if(data.platform == "Linux" && data.architecture == "x86") {
+        return DownloadPlatform.LINUX_AMD64
+    } else {
+        return DownloadPlatform.ALL_PLATFORMS
+    }
 }
-if (UA.indexOf("Mac") != -1) 
-  OSName="osx";
-if (UA.indexOf("Linux") != -1)
-  OSName="linux";
+
+const displayPlatforms = {
+  [DownloadPlatform.WINDOWS_X86]: 'Windows (32-bit)',
+  [DownloadPlatform.WINDOWS_AMD64]: 'Windows (64-bit)',
+  [DownloadPlatform.MACOS_AMD64]: 'macOS (Intel)',
+  [DownloadPlatform.MACOS_AARCH64]: 'macOS (Apple Silicon)',
+  [DownloadPlatform.LINUX_AMD64]: 'Linux (AppImage)',
+  [DownloadPlatform.ALL_PLATFORMS]: 'Source Code',
+  [DownloadPlatform.UNKNOWN]: 'Unknown',
+}
 
 function onBranchSelectChange(branch) {
   let rows = document.getElementsByClassName("download-file-row");
@@ -111,6 +170,24 @@ function onBranchSelectChange(branch) {
       row.classList.add("d-none");
     }
   });
+}
+
+function platformFromFileName(filename) {
+  let platform = DownloadPlatform.UNKNOWN;
+  const url = request.url;
+  if (url.endsWith("-win64.msi")) {
+      platform = DownloadPlatform.WINDOWS_AMD64;
+  } else if(url.endsWith("-win32.msi")) {
+      platform = DownloadPlatform.WINDOWS_X86;
+  } else if(url.endsWith("x86_64--Darwin.dmg")) {
+      platform = DownloadPlatform.MACOS_AMD64;
+  } else if(url.endsWith("arm64--Darwin.dmg")) {
+      platform = DownloadPlatform.MACOS_AARCH64;
+  } else if(url.endsWith("-x86_64.AppImage")) {
+      platform = DownloadPlatform.LINUX_AMD64;
+  } else if(url.endsWith("-Source.tar.gz")) {
+      platform = DownloadPlatform.ALL_PLATFORMS;
+  }
 }
 
 async function init() {
@@ -128,8 +205,9 @@ async function init() {
   const platformFiles = {};
   const branches = ["master"];
   data.forEach(r => {  
-    if (!platformFiles[r.platform]) {
-      platformFiles[r.platform] = [];
+    const platform = platformFromFileName(r.url);
+    if (!platformFiles[platform]) {
+      platformFiles[platform] = [];
     }
   
     if(!branches.includes(r.branch)) {
@@ -146,6 +224,7 @@ async function init() {
   })
   document.getElementById("rendered-content").innerHTML = ejs.render(template, { branches, platformFiles })
 
+  const OSName = await guessPlatform();
   const tabEl = document.getElementById(OSName + '-tab');
   new bootstrap.Tab(tabEl).show();
 

@@ -24,19 +24,6 @@ export const handler = async (event) => {
                 const date = new Date();
                 // Expire after 14 days
                 const ttl = Math.floor(date.getTime() / 1000) + 60 * 60 * 24 * 14;
-                let platform = "unknown";
-                const url = request.url;
-                if (url.endsWith("-win64.msi")) {
-                    platform = "win64";
-                } else if(url.endsWith("-win32.msi")) {
-                    platform = "win32";
-                } else if(url.endsWith("-Darwin.dmg")) {
-                    platform = "osx";
-                } else if(url.endsWith(".AppImage")) {
-                    platform = "linux";
-                } else if(url.endsWith("-Source.tar.gz")) {
-                    platform = "src";
-                }
                 const dynamoRequest = {
                     TableName,
                     Item: {
@@ -44,7 +31,6 @@ export const handler = async (event) => {
                         "shasum": request.shasum,
                         "branch": request.branch,
                         "size": request.size,
-                        "platform": platform,
                         "date": date.toISOString(),
                         "ttl": ttl 
                     }
