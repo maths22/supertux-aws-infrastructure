@@ -84,3 +84,10 @@ resource "aws_cloudfront_distribution" "distribution" {
     }
   }
 }
+
+action "aws_cloudfront_create_invalidation" "invalidate_index" {
+  config {
+    distribution_id = aws_cloudfront_distribution.distribution.id
+    paths           = ["/index.html"]
+  }
+}

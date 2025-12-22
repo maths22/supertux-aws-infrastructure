@@ -25,6 +25,15 @@ resource "aws_s3_object" "index" {
   key    = "index.html"
   source = "static/index.html"
   etag   = filemd5("static/index.html")
+
+  lifecycle {
+    action_trigger {
+      events = [after_create]
+      actions = [
+        action.aws_cloudfront_create_invalidation.invalidate_index
+      ]
+    }
+  }
 }
 
 data "aws_iam_policy_document" "s3_policy" {
