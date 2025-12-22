@@ -46,7 +46,7 @@ function humanFilesize(bytes, si=false, dp=1) {
 
 const template = `
 <ul class="nav nav-tabs" role="tablist">
-  <% Object.entries(platforms).forEach(function ([platform, name]) { %>
+  <% Object.entries(displayPlatforms).forEach(function ([platform, name]) { %>
     <li class="nav-item"><a class="nav-link" id="<%= platform %>-tab" data-bs-target="#<%= platform %>-files" aria-controls="<%= platform %>-files" role="tab" data-bs-toggle="tab"><%= name %></a></li>
   <% }); %>
 </ul>
@@ -57,7 +57,7 @@ const template = `
   <% }); %>
 </select>
 <div class="tab-content">
-<% Object.entries(platforms).forEach(function ([platform, name]) { %>
+<% Object.entries(displayPlatforms).forEach(function ([platform, name]) { %>
   <div role="tabpanel" class="tab-pane" id="<%= platform %>-files">
   <h3><%= name %></h3>
   <% if(platformFiles[platform]) { %>
@@ -221,7 +221,7 @@ async function init() {
       shasum: r.shasum
     });
   })
-  document.getElementById("rendered-content").innerHTML = ejs.render(template, { branches, platformFiles })
+  document.getElementById("rendered-content").innerHTML = ejs.render(template, { branches, platformFiles, displayPlatforms })
 
   const OSName = await guessPlatform();
   const tabEl = document.getElementById(OSName + '-tab');
