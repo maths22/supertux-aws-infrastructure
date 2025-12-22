@@ -28,7 +28,7 @@ resource "aws_s3_object" "index" {
 
   lifecycle {
     action_trigger {
-      events = [after_create]
+      events = [after_create, after_update]
       actions = [
         action.aws_cloudfront_create_invalidation.invalidate_index
       ]
