@@ -176,9 +176,9 @@ function platformFromFileName(filename) {
     return DownloadPlatform.WINDOWS_AMD64;
   } else if(filename.endsWith("-win32.msi")) {
     return DownloadPlatform.WINDOWS_X86;
-  } else if(filename.endsWith("x86_64--Darwin.dmg")) {
+  } else if(filename.endsWith("-x86_64-Darwin.dmg")) {
     return DownloadPlatform.MACOS_AMD64;
-  } else if(filename.endsWith("arm64--Darwin.dmg")) {
+  } else if(filename.endsWith("-arm64-Darwin.dmg")) {
     return DownloadPlatform.MACOS_AARCH64;
   } else if(filename.endsWith("-x86_64.AppImage")) {
     return DownloadPlatform.LINUX_AMD64;
